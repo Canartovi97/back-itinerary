@@ -128,10 +128,28 @@ npm run build --workspace=apps/airport-service
 npm run test --workspace=apps/itinerary-service
 ```
 
+## Airport Service resilience (api-colombia integration)
+
+`ApiColombiaAirportAdapter` consumes two endpoints from https://api-colombia.com/api/v1:
+`GET /Airport` and `GET /Airport/{id}`. Each call goes through:
+
+1. A 5s request timeout with up to 2 retries (300ms/600ms backoff) for transient failures.
+2. A circuit breaker (`CIRCUIT_BREAKER_FAILURE_THRESHOLD`, default 3 consecutive
+   failures; `CIRCUIT_BREAKER_RESET_TIMEOUT_MS`, default 30s) that fails fast once
+   tripped instead of piling up slow requests against a degraded upstream, and
+   probes with a single trial request (half-open) once the reset timeout elapses.
+3. A 404 from api-colombia resolves as "not found" and never counts as a circuit
+   failure or triggers a retry — it's a valid response, not an outage.
+
+When the breaker is open or retries are exhausted, the adapter throws a domain-level
+`AirportProviderUnavailableError`, mapped by `AirportProviderUnavailableFilter` to an
+HTTP 503. All failure/circuit-state logging is emitted as structured JSON via
+`StructuredLogger` (one JSON object per line, e.g. `{"timestamp","level","event","url",...}`)
+so it can be parsed by a log aggregator.
+
 ## Known gaps / TODOs
 
 - No integration or e2e tests yet (only pure unit tests at the domain/use-case level).
-- No circuit breaker (only timeout + manual retry) around the api-colombia HTTP call.
 - No authentication/authorization on any endpoint.
 - Notification Function's SQLite storage is for local dev only; a real Lambda
   deployment would swap `NotificationRepositoryPort` for a DynamoDB adapter.
