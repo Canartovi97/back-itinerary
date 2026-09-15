@@ -4,7 +4,9 @@ import { ConfigService } from '@nestjs/config';
 import { AxiosError } from 'axios';
 import { firstValueFrom } from 'rxjs';
 import { Airport } from '../../domain/airport.entity';
+import { AirportProviderUnavailableError } from '../../domain/errors/airport-provider-unavailable.error';
 import { AirportProvider } from '../../domain/ports/airport-provider.port';
+import { CircuitBreaker, CircuitOpenError } from '../resilience/circuit-breaker';
 
 interface ApiColombiaAirportDto {
   id: number;
@@ -18,15 +20,20 @@ interface ApiColombiaAirportDto {
 const DEFAULT_TIMEOUT_MS = 5000;
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 300;
+const DEFAULT_FAILURE_THRESHOLD = 3;
+const DEFAULT_RESET_TIMEOUT_MS = 30_000;
 
 /**
  * Adapter implementing AirportProvider by calling the public api-colombia service.
- * Adds a request timeout and a small manual retry loop for basic resilience.
+ * Combines a request timeout, a manual retry loop, and a circuit breaker so a
+ * degraded upstream fails fast instead of piling up slow/hanging requests.
+ * Endpoints consumed: GET {baseUrl}/Airport and GET {baseUrl}/Airport/{id}.
  */
 @Injectable()
 export class ApiColombiaAirportAdapter implements AirportProvider {
   private readonly logger = new Logger(ApiColombiaAirportAdapter.name);
   private readonly baseUrl: string;
+  private readonly circuitBreaker: CircuitBreaker;
 
   constructor(
     private readonly httpService: HttpService,
@@ -36,45 +43,81 @@ export class ApiColombiaAirportAdapter implements AirportProvider {
       'API_COLOMBIA_BASE_URL',
       'https://api-colombia.com/api/v1',
     );
+    this.circuitBreaker = new CircuitBreaker({
+      failureThreshold: this.configService.get<number>(
+        'CIRCUIT_BREAKER_FAILURE_THRESHOLD',
+        DEFAULT_FAILURE_THRESHOLD,
+      ),
+      resetTimeoutMs: this.configService.get<number>(
+        'CIRCUIT_BREAKER_RESET_TIMEOUT_MS',
+        DEFAULT_RESET_TIMEOUT_MS,
+      ),
+    });
   }
 
   async findAll(): Promise<Airport[]> {
-    const dtos = await this.requestWithRetry<ApiColombiaAirportDto[]>(`${this.baseUrl}/Airport`);
-    return dtos.map((dto) => this.toDomain(dto));
+    const result = await this.guarded<ApiColombiaAirportDto[]>(`${this.baseUrl}/Airport`);
+    return result.notFound ? [] : result.data.map((dto) => this.toDomain(dto));
   }
 
   async findById(id: number): Promise<Airport | null> {
+    const result = await this.guarded<ApiColombiaAirportDto>(`${this.baseUrl}/Airport/${id}`);
+    return result.notFound ? null : this.toDomain(result.data);
+  }
+
+  /**
+   * Runs a request through the circuit breaker. A 404 resolves as a
+   * `notFound` result rather than throwing, so it is never mistaken for an
+   * upstream outage and never trips the breaker. When the breaker is open,
+   * fails fast with a domain-level AirportProviderUnavailableError instead
+   * of reaching the network — the fallback signal use cases react to.
+   */
+  private async guarded<T>(
+    url: string,
+  ): Promise<{ notFound: false; data: T } | { notFound: true }> {
     try {
-      const dto = await this.requestWithRetry<ApiColombiaAirportDto>(
-        `${this.baseUrl}/Airport/${id}`,
-      );
-      return dto ? this.toDomain(dto) : null;
+      return await this.circuitBreaker.execute(() => this.requestWithRetry<T>(url));
     } catch (error) {
-      if (error instanceof AxiosError && error.response?.status === 404) {
-        return null;
+      if (error instanceof CircuitOpenError) {
+        this.logger.warn({
+          event: 'api_colombia_circuit_open',
+          url,
+          message: 'Circuit breaker open, failing fast without calling api-colombia',
+        });
+        throw new AirportProviderUnavailableError();
       }
-      throw error;
+      this.logger.error({
+        event: 'api_colombia_request_exhausted',
+        url,
+        message: 'All retry attempts failed',
+        error: (error as Error).message,
+      });
+      throw new AirportProviderUnavailableError();
     }
   }
 
-  private async requestWithRetry<T>(url: string): Promise<T> {
+  private async requestWithRetry<T>(
+    url: string,
+  ): Promise<{ notFound: false; data: T } | { notFound: true }> {
     let lastError: unknown;
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
         const response = await firstValueFrom(
           this.httpService.get<T>(url, { timeout: DEFAULT_TIMEOUT_MS }),
         );
-        return response.data;
+        return { notFound: false, data: response.data };
       } catch (error) {
-        lastError = error;
         if (error instanceof AxiosError && error.response?.status === 404) {
-          throw error;
+          return { notFound: true };
         }
-        this.logger.warn(
-          `Request to ${url} failed (attempt ${attempt + 1}/${MAX_RETRIES + 1}): ${
-            (error as Error).message
-          }`,
-        );
+        lastError = error;
+        this.logger.warn({
+          event: 'api_colombia_request_failed',
+          url,
+          attempt: attempt + 1,
+          maxAttempts: MAX_RETRIES + 1,
+          error: (error as Error).message,
+        });
         if (attempt < MAX_RETRIES) {
           await this.delay(RETRY_DELAY_MS * (attempt + 1));
         }
