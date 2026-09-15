@@ -1,0 +1,100 @@
+version: '3.8'
+
+networks:
+  itinerary-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
+  notification-data:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: itinerary-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: itinerary_db
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - itinerary-net
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: itinerary-rabbitmq
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - itinerary-net
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  airport-service:
+    build:
+      context: .
+      dockerfile: apps/airport-service/Dockerfile
+    container_name: airport-service
+    environment:
+      PORT: 3001
+      API_COLOMBIA_BASE_URL: https://api-colombia.com/api/v1
+    ports:
+      - '3001:3001'
+    networks:
+      - itinerary-net
+
+  itinerary-service:
+    build:
+      context: .
+      dockerfile: apps/itinerary-service/Dockerfile
+    container_name: itinerary-service
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/itinerary_db
+      AIRPORT_SERVICE_URL: http://airport-service:3001
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+    ports:
+      - '3000:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      airport-service:
+        condition: service_started
+    networks:
+      - itinerary-net
+
+  notification-function:
+    build:
+      context: .
+      dockerfile: apps/notification-function/Dockerfile
+    container_name: notification-function
+    environment:
+      PORT: 3002
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      SQLITE_PATH: /data/notifications.db
+    ports:
+      - '3002:3002'
+    volumes:
+      - notification-data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - itinerary-net

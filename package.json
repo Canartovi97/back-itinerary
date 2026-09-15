@@ -1,0 +1,27 @@
+{
+  "name": "back-itinerary",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Distributed itinerary-planning system monorepo (airport-service, itinerary-service, notification-function)",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace=apps/airport-service && npm run build --workspace=apps/itinerary-service && npm run build --workspace=apps/notification-function",
+    "test": "npm run test --workspace=apps/airport-service && npm run test --workspace=apps/itinerary-service && npm run test --workspace=apps/notification-function",
+    "lint": "eslint \"apps/**/*.ts\"",
+    "format": "prettier --write \"apps/**/*.ts\"",
+    "start:airport": "npm run start:dev --workspace=apps/airport-service",
+    "start:itinerary": "npm run start:dev --workspace=apps/itinerary-service",
+    "start:notification": "npm run start:dev --workspace=apps/notification-function"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "prettier": "^3.3.3",
+    "typescript": "^5.4.5"
+  }
+}
