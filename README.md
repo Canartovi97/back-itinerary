@@ -3,6 +3,12 @@
 Backend monorepo for a distributed itinerary-planning system. Built as the initial
 scaffolding for a graduate architecture course project.
 
+See [docs/architecture.md](docs/architecture.md) for the component diagram, the
+itinerary-creation event flow, and a backlog dependency graph for sequencing
+upcoming tickets. See [.claude/skills/backend-hexagonal](.claude/skills/backend-hexagonal/SKILL.md)
+for the conventions to follow when implementing a new ticket (Claude Code
+loads this automatically when working in this repo).
+
 ## Monorepo structure
 
 npm workspaces host three independent, deployable NestJS/TypeScript applications:
