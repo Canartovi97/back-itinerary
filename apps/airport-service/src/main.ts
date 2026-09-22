@@ -6,6 +6,7 @@ import { StructuredLogger } from './infrastructure/logging/structured-logger.ser
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { logger: new StructuredLogger() });
+  app.enableCors();
   app.useGlobalFilters(new AirportProviderUnavailableFilter());
 
   const config = new DocumentBuilder()
