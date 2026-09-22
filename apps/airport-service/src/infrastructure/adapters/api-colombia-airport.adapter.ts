@@ -137,8 +137,13 @@ export class ApiColombiaAirportAdapter implements AirportProvider {
       city: dto.city?.name ?? '',
       country: dto.city?.country?.name ?? '',
       iataCode: dto.iataCode ?? '',
-      latitude: dto.latitude ?? 0,
-      longitude: dto.longitude ?? 0,
+      // api-colombia serves these two fields swapped at the source (verified
+      // against BOG: its "latitude" field holds -74.15, which is actually a
+      // longitude). Swap them here so the rest of the system sees correct,
+      // standard lat/lng — this is exactly what the Adapter pattern is for:
+      // absorbing an external provider's quirks before they reach our domain.
+      latitude: dto.longitude ?? 0,
+      longitude: dto.latitude ?? 0,
     });
   }
 }
