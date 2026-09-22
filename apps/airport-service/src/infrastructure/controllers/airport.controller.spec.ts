@@ -3,15 +3,17 @@ import { Test } from '@nestjs/testing';
 import { GetAirportByIdUseCase } from '../../application/get-airport-by-id.use-case';
 import { ListAirportsUseCase } from '../../application/list-airports.use-case';
 import { Airport } from '../../domain/airport.entity';
+import { AirportProviderUnavailableError } from '../../domain/errors/airport-provider-unavailable.error';
 import { AirportController } from './airport.controller';
 
 /**
- * HTTP-entry-point tests for SCRUM-16: confirms the controller itself
- * honors both acceptance criteria — a valid id returns the airport, and
- * an unknown id propagates as the controlled 404 NestJS maps to an HTTP
- * response (rather than, say, being swallowed or turned into a 500).
+ * HTTP-entry-point tests for SCRUM-13/16: confirms the controller itself
+ * honors the acceptance criteria — a valid id/list returns data, an unknown
+ * id propagates as a controlled 404, and an unreachable api-colombia
+ * propagates as a controlled 503 (via AirportProviderUnavailableFilter),
+ * rather than either being swallowed or turned into a bare 500.
  */
-describe('AirportController (SCRUM-16)', () => {
+describe('AirportController (SCRUM-13/16)', () => {
   const sampleAirport = Airport.create({
     id: 44,
     name: 'Aeropuerto Militar CATAM',
@@ -22,11 +24,14 @@ describe('AirportController (SCRUM-16)', () => {
     longitude: -74.15303487,
   });
 
-  async function buildController(getAirportByIdUseCase: Pick<GetAirportByIdUseCase, 'execute'>) {
+  async function buildController(
+    getAirportByIdUseCase: Pick<GetAirportByIdUseCase, 'execute'>,
+    listAirportsUseCase: Pick<ListAirportsUseCase, 'execute'> = { execute: jest.fn() },
+  ) {
     const moduleRef = await Test.createTestingModule({
       controllers: [AirportController],
       providers: [
-        { provide: ListAirportsUseCase, useValue: { execute: jest.fn() } },
+        { provide: ListAirportsUseCase, useValue: listAirportsUseCase },
         { provide: GetAirportByIdUseCase, useValue: getAirportByIdUseCase },
       ],
     }).compile();
@@ -57,5 +62,26 @@ describe('AirportController (SCRUM-16)', () => {
       status: 404,
       response: expect.objectContaining({ message: expect.stringContaining('999999') }),
     });
+  });
+
+  it('GET /airports returns the list of Colombian airports (SCRUM-13)', async () => {
+    const controller = await buildController(
+      { execute: jest.fn() },
+      { execute: jest.fn().mockResolvedValue([sampleAirport]) },
+    );
+
+    const result = await controller.findAll();
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual(expect.objectContaining({ id: 44, iataCode: 'BOG' }));
+  });
+
+  it('GET /airports propagates a controlled error when api-colombia does not respond (SCRUM-13)', async () => {
+    const controller = await buildController(
+      { execute: jest.fn() },
+      { execute: jest.fn().mockRejectedValue(new AirportProviderUnavailableError()) },
+    );
+
+    await expect(controller.findAll()).rejects.toThrow(AirportProviderUnavailableError);
   });
 });
