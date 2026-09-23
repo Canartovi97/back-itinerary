@@ -1,5 +1,7 @@
+import { randomUUID } from 'crypto';
 import * as amqplib from 'amqplib';
 import { ItineraryCreatedEvent } from '../../domain/itinerary-created.event';
+import { RequestContext } from '../observability/request-context';
 
 const EXCHANGE_NAME = 'itinerary.events';
 const ROUTING_KEY = 'itinerary.created';
@@ -38,7 +40,12 @@ export class RabbitMqItineraryCreatedConsumer {
     handler: (event: ItineraryCreatedEvent) => Promise<void>,
   ): Promise<void> {
     const event = JSON.parse(msg.content.toString()) as ItineraryCreatedEvent;
-    await handler(event);
+    // Continue the correlation ID the publisher attached (see
+    // RabbitMqEventPublisherAdapter in itinerary-service) so this event's
+    // processing logs trace back to the original request. Falls back to a
+    // fresh ID for messages published without one.
+    const correlationId = msg.properties.correlationId || randomUUID();
+    await RequestContext.run(correlationId, () => handler(event));
   }
 
   async stop(): Promise<void> {

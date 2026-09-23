@@ -4,6 +4,8 @@ import { ConfigService } from '@nestjs/config';
 import { AxiosError } from 'axios';
 import { firstValueFrom } from 'rxjs';
 import { AirportValidationPort } from '../../domain/ports/airport-validation.port';
+import { CORRELATION_ID_HEADER } from '../observability/correlation-id.middleware';
+import { RequestContext } from '../observability/request-context';
 
 /**
  * Calls the Airport Service over HTTP to confirm an airport id exists.
@@ -22,8 +24,12 @@ export class HttpAirportValidationAdapter implements AirportValidationPort {
 
   async exists(airportId: number): Promise<boolean> {
     try {
+      const correlationId = RequestContext.getCorrelationId();
       await firstValueFrom(
-        this.httpService.get(`${this.baseUrl}/airports/${airportId}`, { timeout: 5000 }),
+        this.httpService.get(`${this.baseUrl}/airports/${airportId}`, {
+          timeout: 5000,
+          headers: correlationId ? { [CORRELATION_ID_HEADER]: correlationId } : undefined,
+        }),
       );
       return true;
     } catch (error) {
