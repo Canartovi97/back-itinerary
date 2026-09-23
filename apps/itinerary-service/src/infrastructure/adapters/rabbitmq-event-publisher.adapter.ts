@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { ConfigService } from '@nestjs/config';
 import * as amqplib from 'amqplib';
 import { EventPublisherPort, ItineraryCreatedEvent } from '../../domain/ports/event-publisher.port';
+import { RequestContext } from '../observability/request-context';
 
 const EXCHANGE_NAME = 'itinerary.events';
 const ROUTING_KEY = 'itinerary.created';
@@ -50,10 +51,15 @@ export class RabbitMqEventPublisherAdapter
     }
 
     const payload = Buffer.from(JSON.stringify({ type: 'ItineraryCreated', ...event }));
+    const correlationId = RequestContext.getCorrelationId();
 
     this.channel.publish(EXCHANGE_NAME, ROUTING_KEY, payload, {
       contentType: 'application/json',
       persistent: true,
+      // Standard AMQP message property — lets a consumer (notification-function)
+      // continue the same correlation ID in its own logs, tracing the request
+      // all the way from the original HTTP call through the async event.
+      ...(correlationId ? { correlationId } : {}),
     });
   }
 }

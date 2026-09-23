@@ -1,4 +1,5 @@
 import { Airport } from '../domain/airport.entity';
+import { AirportProviderUnavailableError } from '../domain/errors/airport-provider-unavailable.error';
 import { AirportCache } from '../domain/ports/airport-cache.port';
 import { AirportProvider } from '../domain/ports/airport-provider.port';
 import { ListAirportsUseCase } from './list-airports.use-case';
@@ -77,5 +78,17 @@ describe('ListAirportsUseCase', () => {
 
     expect(result).toEqual(sampleAirports);
     expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('propagates AirportProviderUnavailableError when api-colombia does not respond (SCRUM-13)', async () => {
+    const provider: AirportProvider = {
+      findAll: async () => {
+        throw new AirportProviderUnavailableError();
+      },
+      findById: async () => null,
+    };
+    const useCase = new ListAirportsUseCase(provider, new FakeAirportCache());
+
+    await expect(useCase.execute()).rejects.toThrow(AirportProviderUnavailableError);
   });
 });

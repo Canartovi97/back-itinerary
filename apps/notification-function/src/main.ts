@@ -3,6 +3,7 @@ import { CreateNotificationFromEventUseCase } from './application/create-notific
 import { RabbitMqItineraryCreatedConsumer } from './infrastructure/adapters/rabbitmq-itinerary-created.consumer';
 import { SqliteNotificationRepository } from './infrastructure/adapters/sqlite-notification.repository';
 import { createHealthServer } from './infrastructure/controllers/health.controller';
+import { StructuredLogger } from './infrastructure/logging/structured-logger';
 
 async function bootstrap() {
   const port = Number(process.env.PORT ?? 3002);
@@ -16,20 +17,20 @@ async function bootstrap() {
   try {
     await consumer.start(async (event) => {
       await useCase.execute(event);
-      // eslint-disable-next-line no-console
-      console.log(`Notification created for itinerary ${event.itineraryId}`);
+      StructuredLogger.log('Notification created', { itineraryId: event.itineraryId });
     });
-    // eslint-disable-next-line no-console
-    console.log(`Connected to RabbitMQ at ${rabbitMqUrl}, waiting for ItineraryCreated events`);
+    StructuredLogger.log('Connected to RabbitMQ, waiting for ItineraryCreated events', {
+      rabbitMqUrl,
+    });
   } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error(`Failed to start RabbitMQ consumer: ${(error as Error).message}`);
+    StructuredLogger.error('Failed to start RabbitMQ consumer', {
+      error: (error as Error).message,
+    });
   }
 
   const app = createHealthServer();
   app.listen(port, () => {
-    // eslint-disable-next-line no-console
-    console.log(`Notification Function health endpoint listening on port ${port}`);
+    StructuredLogger.log(`Notification Function health endpoint listening on port ${port}`);
   });
 }
 
