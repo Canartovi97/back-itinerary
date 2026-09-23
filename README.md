@@ -118,7 +118,12 @@ npm run migration:run
 npm run migration:revert
 ```
 
-The initial migration (`CreateItinerariesTable`) creates the `itineraries` table.
+Two migrations exist: `CreateItinerariesTable` and `CreateUsersTable` (see
+"Authentication" below). Migration commands use `typeorm-ts-node-commonjs`
+(TypeORM's own bin for exactly this decorator + ts-node + npm-workspaces
+combination) rather than reaching into `node_modules/typeorm/cli.js`
+directly, which breaks under workspace hoisting since apps here have no
+per-app `node_modules`.
 
 ## Building and testing
 
@@ -178,6 +183,34 @@ through the async notification. `RequestContext`/`CorrelationIdMiddleware`/
 `StructuredLogger` are intentionally duplicated per app (small, ~30-60 lines each)
 rather than factored into a shared library, matching this monorepo's current
 no-shared-code convention — see the [backend-hexagonal skill](.claude/skills/backend-hexagonal/SKILL.md).
+
+## Authentication (JWT)
+
+`itinerary-service` owns the user store (it already has Postgres) and is the
+only service that issues tokens:
+
+- `POST /auth/register` — `{ email, password }` → creates a user (bcrypt-hashed
+  password), `409` if the email is already registered.
+- `POST /auth/login` — `{ email, password }` → `{ accessToken }`, a JWT signed
+  with `JWT_SECRET` (`sub` = user id, `email`), `401` on wrong credentials.
+- All `/itineraries` endpoints require `Authorization: Bearer <token>`
+  (`JwtAuthGuard`), returning `401` if it's missing/invalid/expired. Airport
+  Service's read endpoints stay publicly browsable (RF-01/RF-02) — no ticket
+  calls for authentication there.
+- The token is propagated on itinerary-service's internal call to
+  airport-service (`HttpAirportValidationAdapter`, carried via
+  `RequestContext.getAuthToken()`) and airport-service has its own
+  `JwtAuthGuard` (same shared `JWT_SECRET`) ready to verify it — not currently
+  applied to any route there, since none of its endpoints are sensitive yet,
+  but tested and available for when one is added.
+- `JWT_SECRET` must be identical across `itinerary-service` and
+  `airport-service` (see each app's `.env.example`) — itinerary-service is the
+  only issuer, but both need the same secret to verify a token.
+
+Frontend counterpart: `front-intinerary`'s `correlationIdInterceptor` mints the
+correlation ID (this app is the real first entry point), and a new
+`AuthService`/`authInterceptor` pair handles login/registration and attaches
+the stored JWT to every request — see that repo's README.
 
 ## Known gaps / TODOs
 

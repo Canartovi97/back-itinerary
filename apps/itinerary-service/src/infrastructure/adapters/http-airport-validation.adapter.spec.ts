@@ -4,7 +4,7 @@ import { of } from 'rxjs';
 import { RequestContext } from '../observability/request-context';
 import { HttpAirportValidationAdapter } from './http-airport-validation.adapter';
 
-describe('HttpAirportValidationAdapter correlation ID propagation (SCRUM-41)', () => {
+describe('HttpAirportValidationAdapter correlation ID / JWT propagation (SCRUM-41 / auth)', () => {
   function buildAdapter(httpGet: jest.Mock) {
     const httpService = { get: httpGet } as unknown as HttpService;
     const configService = {
@@ -17,7 +17,7 @@ describe('HttpAirportValidationAdapter correlation ID propagation (SCRUM-41)', (
     const httpGet = jest.fn().mockReturnValue(of({ data: {} }));
     const adapter = buildAdapter(httpGet);
 
-    await RequestContext.run('trace-42', () => adapter.exists(7));
+    await RequestContext.run({ correlationId: 'trace-42' }, () => adapter.exists(7));
 
     expect(httpGet).toHaveBeenCalledWith(
       expect.stringContaining('/airports/7'),
@@ -25,7 +25,7 @@ describe('HttpAirportValidationAdapter correlation ID propagation (SCRUM-41)', (
     );
   });
 
-  it('omits the header entirely when there is no active correlation id', async () => {
+  it('omits the header entirely when there is no active request context', async () => {
     const httpGet = jest.fn().mockReturnValue(of({ data: {} }));
     const adapter = buildAdapter(httpGet);
 
@@ -34,6 +34,22 @@ describe('HttpAirportValidationAdapter correlation ID propagation (SCRUM-41)', (
     expect(httpGet).toHaveBeenCalledWith(
       expect.stringContaining('/airports/7'),
       expect.objectContaining({ headers: undefined }),
+    );
+  });
+
+  it('forwards the caller bearer token alongside the correlation id', async () => {
+    const httpGet = jest.fn().mockReturnValue(of({ data: {} }));
+    const adapter = buildAdapter(httpGet);
+
+    await RequestContext.run({ correlationId: 'trace-42', authToken: 'jwt-abc' }, () =>
+      adapter.exists(7),
+    );
+
+    expect(httpGet).toHaveBeenCalledWith(
+      expect.stringContaining('/airports/7'),
+      expect.objectContaining({
+        headers: { 'x-correlation-id': 'trace-42', authorization: 'Bearer jwt-abc' },
+      }),
     );
   });
 });
