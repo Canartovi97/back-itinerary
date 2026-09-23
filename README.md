@@ -153,6 +153,32 @@ HTTP 503. All failure/circuit-state logging is emitted as structured JSON via
 `StructuredLogger` (one JSON object per line, e.g. `{"timestamp","level","event","url",...}`)
 so it can be parsed by a log aggregator.
 
+## Structured logging and correlation IDs
+
+Every service now logs JSON (one object per line: `timestamp`, `level`, `context`,
+`correlationId` when present, plus the message/fields) via each app's own
+`StructuredLogger`. A correlation ID traces one logical request across all three
+services:
+
+1. `CorrelationIdMiddleware` (airport-service, itinerary-service) reuses the
+   `x-correlation-id` request header if the caller sent one, otherwise mints a new
+   UUID, stores it for the request's lifetime via `RequestContext`
+   (an `AsyncLocalStorage` wrapper), and echoes it back on the response header.
+2. `itinerary-service`'s `HttpAirportValidationAdapter` forwards that same header
+   when it calls airport-service to validate an airport.
+3. `itinerary-service`'s `RabbitMqEventPublisherAdapter` attaches it as the
+   standard AMQP `correlationId` message property when publishing `ItineraryCreated`.
+4. `notification-function`'s consumer reads `msg.properties.correlationId` and runs
+   the rest of that message's processing inside the same `RequestContext`, so its
+   logs carry the identical ID.
+
+Net result: grepping one correlation ID across all three services' logs shows the
+full lifecycle of a single itinerary creation, from the original HTTP request
+through the async notification. `RequestContext`/`CorrelationIdMiddleware`/
+`StructuredLogger` are intentionally duplicated per app (small, ~30-60 lines each)
+rather than factored into a shared library, matching this monorepo's current
+no-shared-code convention — see the [backend-hexagonal skill](.claude/skills/backend-hexagonal/SKILL.md).
+
 ## Known gaps / TODOs
 
 - No integration or e2e tests yet (only pure unit tests at the domain/use-case level).

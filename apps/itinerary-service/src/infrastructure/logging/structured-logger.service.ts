@@ -4,8 +4,10 @@ import { RequestContext } from '../observability/request-context';
 type LogLevel = 'log' | 'error' | 'warn' | 'debug' | 'verbose';
 
 /**
- * Emits every log line as a single JSON object so log aggregators
- * (ELK, CloudWatch, etc.) can parse fields instead of free text.
+ * Emits every log line as a single JSON object, tagged with the current
+ * request's correlation ID when one is active, so log aggregators can
+ * parse fields and trace a request across services instead of grepping
+ * free text.
  */
 export class StructuredLogger implements LoggerService {
   log(message: unknown, context?: string): void {
