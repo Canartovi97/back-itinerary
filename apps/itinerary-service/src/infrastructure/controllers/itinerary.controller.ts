@@ -11,7 +11,17 @@ import {
   Put,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiNoContentResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 import { CreateItineraryUseCase } from '../../application/create-itinerary.use-case';
 import { DeleteItineraryUseCase } from '../../application/delete-itinerary.use-case';
 import { GetItineraryUseCase } from '../../application/get-itinerary.use-case';
@@ -22,8 +32,15 @@ import { ItineraryDto } from '../dto/itinerary.dto';
 import { UpdateItineraryDto } from '../dto/update-itinerary.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
+const ID_PARAM = {
+  name: 'id',
+  format: 'uuid',
+  description: "The itinerary's id",
+};
+
 @ApiTags('itineraries')
 @ApiBearerAuth()
+@ApiUnauthorizedResponse({ description: 'Missing, invalid, or expired bearer token.' })
 @UseGuards(JwtAuthGuard)
 @Controller('itineraries')
 export class ItineraryController {
@@ -38,6 +55,11 @@ export class ItineraryController {
   @Post()
   @ApiOperation({ summary: 'Create a new itinerary' })
   @ApiOkResponse({ type: ItineraryDto })
+  @ApiBadRequestResponse({
+    description:
+      'A domain rule was violated (same origin/destination, past departure date, non-positive duration) or a field failed validation.',
+  })
+  @ApiNotFoundResponse({ description: 'The origin or destination airport id does not exist.' })
   async create(@Body() dto: CreateItineraryDto): Promise<ItineraryDto> {
     const itinerary = await this.createItineraryUseCase.execute(dto);
     return ItineraryDto.fromDomain(itinerary);
@@ -53,7 +75,9 @@ export class ItineraryController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get an itinerary by id' })
+  @ApiParam(ID_PARAM)
   @ApiOkResponse({ type: ItineraryDto })
+  @ApiNotFoundResponse({ description: 'No itinerary exists with the given id.' })
   async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<ItineraryDto> {
     const itinerary = await this.getItineraryUseCase.execute(id);
     return ItineraryDto.fromDomain(itinerary);
@@ -61,7 +85,16 @@ export class ItineraryController {
 
   @Put(':id')
   @ApiOperation({ summary: 'Update an existing itinerary' })
+  @ApiParam(ID_PARAM)
   @ApiOkResponse({ type: ItineraryDto })
+  @ApiBadRequestResponse({
+    description:
+      'A domain rule was violated (same origin/destination, past departure date, non-positive duration) or a field failed validation.',
+  })
+  @ApiNotFoundResponse({
+    description:
+      'No itinerary exists with the given id, or the new origin/destination airport id does not exist.',
+  })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateItineraryDto,
@@ -73,6 +106,9 @@ export class ItineraryController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete an itinerary' })
+  @ApiParam(ID_PARAM)
+  @ApiNoContentResponse({ description: 'The itinerary was deleted.' })
+  @ApiNotFoundResponse({ description: 'No itinerary exists with the given id.' })
   async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     await this.deleteItineraryUseCase.execute(id);
   }
