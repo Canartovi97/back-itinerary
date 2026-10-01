@@ -61,5 +61,15 @@ export class RabbitMqEventPublisherAdapter
       // all the way from the original HTTP call through the async event.
       ...(correlationId ? { correlationId } : {}),
     });
+
+    // SCRUM-31: the publication itself must be traceable in logs (with the
+    // correlation ID StructuredLogger attaches automatically from
+    // RequestContext), not just inferable from the itinerary having saved.
+    this.logger.log({
+      event: 'itinerary_created_event_published',
+      itineraryId: event.itineraryId,
+      exchange: EXCHANGE_NAME,
+      routingKey: ROUTING_KEY,
+    });
   }
 }
