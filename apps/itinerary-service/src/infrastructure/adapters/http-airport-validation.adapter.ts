@@ -25,10 +25,22 @@ export class HttpAirportValidationAdapter implements AirportValidationPort {
   async exists(airportId: number): Promise<boolean> {
     try {
       const correlationId = RequestContext.getCorrelationId();
+      const authToken = RequestContext.getAuthToken();
+      const headers: Record<string, string> = {};
+      if (correlationId) {
+        headers[CORRELATION_ID_HEADER] = correlationId;
+      }
+      if (authToken) {
+        // Propagates the caller's JWT to airport-service (SCRUM: JWT
+        // propagation between services). airport-service doesn't currently
+        // require it on its public read endpoints, but forwards it so it's
+        // available if/when a protected endpoint needs it.
+        headers['authorization'] = `Bearer ${authToken}`;
+      }
       await firstValueFrom(
         this.httpService.get(`${this.baseUrl}/airports/${airportId}`, {
           timeout: 5000,
-          headers: correlationId ? { [CORRELATION_ID_HEADER]: correlationId } : undefined,
+          headers: Object.keys(headers).length > 0 ? headers : undefined,
         }),
       );
       return true;

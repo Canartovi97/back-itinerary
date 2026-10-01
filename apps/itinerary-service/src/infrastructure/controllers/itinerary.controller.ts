@@ -9,8 +9,9 @@ import {
   ParseUUIDPipe,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateItineraryUseCase } from '../../application/create-itinerary.use-case';
 import { DeleteItineraryUseCase } from '../../application/delete-itinerary.use-case';
 import { GetItineraryUseCase } from '../../application/get-itinerary.use-case';
@@ -19,8 +20,11 @@ import { UpdateItineraryUseCase } from '../../application/update-itinerary.use-c
 import { CreateItineraryDto } from '../dto/create-itinerary.dto';
 import { ItineraryDto } from '../dto/itinerary.dto';
 import { UpdateItineraryDto } from '../dto/update-itinerary.dto';
+import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
 @ApiTags('itineraries')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('itineraries')
 export class ItineraryController {
   constructor(
