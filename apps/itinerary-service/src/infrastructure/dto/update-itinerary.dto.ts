@@ -1,14 +1,17 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import { IsDateString, IsInt, IsOptional, IsPositive, Min } from 'class-validator';
 
 export class UpdateItineraryDto {
   @ApiPropertyOptional()
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   originAirportId?: number;
 
   @ApiPropertyOptional()
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   destinationAirportId?: number;
 
@@ -19,6 +22,7 @@ export class UpdateItineraryDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @IsPositive()
