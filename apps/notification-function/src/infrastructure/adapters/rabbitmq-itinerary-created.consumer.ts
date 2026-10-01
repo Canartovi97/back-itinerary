@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import * as amqplib from 'amqplib';
 import { ItineraryCreatedEvent } from '../../domain/itinerary-created.event';
+import { StructuredLogger } from '../logging/structured-logger';
 import { RequestContext } from '../observability/request-context';
 
 const EXCHANGE_NAME = 'itinerary.events';
@@ -31,7 +32,19 @@ export class RabbitMqItineraryCreatedConsumer {
       const channel = this.channel as amqplib.Channel;
       void this.handleMessage(msg, handler)
         .then(() => channel.ack(msg))
-        .catch(() => channel.nack(msg, false, false));
+        .catch((error: unknown) => {
+          // Processing failed (bad message, DB write failed, etc). The
+          // message is nacked without requeue — but the failure must still
+          // land in the historial, per SCRUM's "cada ejecución registra
+          // éxito o fallo del procesamiento". A failed message can't be
+          // trusted to produce a notification row (the DB write may be
+          // what failed), so a structured log is the fallback record.
+          StructuredLogger.error('Failed to process ItineraryCreated event', {
+            error: (error as Error).message,
+            itineraryId: this.tryExtractItineraryId(msg),
+          });
+          channel.nack(msg, false, false);
+        });
     });
   }
 
@@ -46,6 +59,14 @@ export class RabbitMqItineraryCreatedConsumer {
     // fresh ID for messages published without one.
     const correlationId = msg.properties.correlationId || randomUUID();
     await RequestContext.run(correlationId, () => handler(event));
+  }
+
+  private tryExtractItineraryId(msg: amqplib.ConsumeMessage): string | undefined {
+    try {
+      return (JSON.parse(msg.content.toString()) as ItineraryCreatedEvent).itineraryId;
+    } catch {
+      return undefined;
+    }
   }
 
   async stop(): Promise<void> {

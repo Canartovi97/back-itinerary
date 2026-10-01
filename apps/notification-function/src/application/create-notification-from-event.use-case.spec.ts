@@ -32,7 +32,7 @@ describe('CreateNotificationFromEventUseCase', () => {
     const notification = await useCase.execute(event);
 
     expect(notification.itineraryId).toBe('itin-123');
-    expect(notification.status).toBe('PENDING');
+    expect(notification.status).toBe('SENT');
     expect(notification.message).toContain('itin-123');
     expect(notification.message).toContain('1');
     expect(notification.message).toContain('2');

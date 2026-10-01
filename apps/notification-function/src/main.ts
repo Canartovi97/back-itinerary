@@ -28,7 +28,7 @@ async function bootstrap() {
     });
   }
 
-  const app = createHealthServer();
+  const app = createHealthServer(repository);
   app.listen(port, () => {
     StructuredLogger.log(`Notification Function health endpoint listening on port ${port}`);
   });
