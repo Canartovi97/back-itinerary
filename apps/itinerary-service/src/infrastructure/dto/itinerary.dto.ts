@@ -2,22 +2,22 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Itinerary } from '../../domain/itinerary.entity';
 
 export class ItineraryDto {
-  @ApiProperty()
+  @ApiProperty({ example: 'b3f1c2a0-5e4d-4b8a-9c1e-2f3a4b5c6d7e' })
   id: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 3 })
   originAirportId: number;
 
-  @ApiProperty()
+  @ApiProperty({ example: 25 })
   destinationAirportId: number;
 
-  @ApiProperty()
+  @ApiProperty({ example: '2030-06-15T00:00:00.000Z' })
   departureDate: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 5 })
   durationDays: number;
 
-  @ApiProperty()
+  @ApiProperty({ example: '2026-09-30T12:00:00.000Z' })
   createdAt: string;
 
   static fromDomain(itinerary: Itinerary): ItineraryDto {
