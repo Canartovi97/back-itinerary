@@ -1,4 +1,7 @@
-import { AirportNotFoundError } from '../domain/errors/itinerary-domain.errors';
+import {
+  AirportNotFoundError,
+  AirportServiceUnavailableError,
+} from '../domain/errors/itinerary-domain.errors';
 import { Itinerary } from '../domain/itinerary.entity';
 import { AirportValidationPort } from '../domain/ports/airport-validation.port';
 import { EventPublisherPort, ItineraryCreatedEvent } from '../domain/ports/event-publisher.port';
@@ -20,6 +23,7 @@ describe('CreateItineraryUseCase event publication (SCRUM-31)', () => {
 
   function buildUseCase(options: {
     airportsExist?: boolean;
+    airportsExistImpl?: (airportId: number) => Promise<boolean>;
     saveImpl?: (i: Itinerary) => Promise<Itinerary>;
   }) {
     const published: ItineraryCreatedEvent[] = [];
@@ -34,7 +38,7 @@ describe('CreateItineraryUseCase event publication (SCRUM-31)', () => {
     };
 
     const airportValidation: AirportValidationPort = {
-      exists: async () => options.airportsExist ?? true,
+      exists: options.airportsExistImpl ?? (async () => options.airportsExist ?? true),
     };
 
     const eventPublisher: EventPublisherPort = {
@@ -65,6 +69,23 @@ describe('CreateItineraryUseCase event publication (SCRUM-31)', () => {
     const { useCase, published } = buildUseCase({ airportsExist: false });
 
     await expect(useCase.execute(validCommand)).rejects.toThrow(AirportNotFoundError);
+    expect(published).toHaveLength(0);
+  });
+
+  it('neither saves nor publishes when Airport Service is unavailable (PROYEC-14)', async () => {
+    let saved = false;
+    const { useCase, published } = buildUseCase({
+      airportsExistImpl: async () => {
+        throw new AirportServiceUnavailableError();
+      },
+      saveImpl: async (i) => {
+        saved = true;
+        return i;
+      },
+    });
+
+    await expect(useCase.execute(validCommand)).rejects.toThrow(AirportServiceUnavailableError);
+    expect(saved).toBe(false);
     expect(published).toHaveLength(0);
   });
 

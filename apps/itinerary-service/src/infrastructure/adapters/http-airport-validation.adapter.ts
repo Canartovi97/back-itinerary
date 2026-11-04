@@ -3,6 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AxiosError } from 'axios';
 import { firstValueFrom } from 'rxjs';
+import { AirportServiceUnavailableError } from '../../domain/errors/itinerary-domain.errors';
 import { AirportValidationPort } from '../../domain/ports/airport-validation.port';
 import { CORRELATION_ID_HEADER } from '../observability/correlation-id.middleware';
 import { RequestContext } from '../observability/request-context';
@@ -53,7 +54,7 @@ export class HttpAirportValidationAdapter implements AirportValidationPort {
           (error as Error).message
         }`,
       );
-      throw error;
+      throw new AirportServiceUnavailableError();
     }
   }
 }

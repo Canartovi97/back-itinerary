@@ -30,6 +30,17 @@ export class AirportNotFoundError extends ItineraryDomainError {
   }
 }
 
+/**
+ * Raised when Airport Service cannot be reached (network failure, timeout,
+ * or an error response other than 404), so airport existence can't be
+ * confirmed. The itinerary must not be saved in that case.
+ */
+export class AirportServiceUnavailableError extends ItineraryDomainError {
+  constructor() {
+    super('Airport Service is unavailable, airport existence could not be validated');
+  }
+}
+
 export class ItineraryNotFoundError extends ItineraryDomainError {
   constructor(id: string) {
     super(`Itinerary with id ${id} not found`);
