@@ -10,7 +10,10 @@ import {
   Min,
 } from 'class-validator';
 
-export class CreateItineraryDto {
+import { ItineraryDetailsInputDto } from './itinerary-details.dto';
+
+/** Core trip fields plus the optional trip-details sections (defaults apply). */
+export class CreateItineraryDto extends ItineraryDetailsInputDto {
   @ApiProperty({ example: 'Vacaciones en Cartagena', maxLength: 100 })
   @IsString()
   @IsNotEmpty()

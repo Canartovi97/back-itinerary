@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { AirportNotFoundError } from '../domain/errors/itinerary-domain.errors';
+import { ItineraryDetails } from '../domain/itinerary-details';
 import { Itinerary } from '../domain/itinerary.entity';
 import {
   AIRPORT_VALIDATION_PORT,
@@ -19,6 +20,7 @@ export interface CreateItineraryCommand {
   destinationAirportId: number;
   departureDate: string;
   durationDays: number;
+  details?: Partial<ItineraryDetails>;
 }
 
 @Injectable()
@@ -38,6 +40,7 @@ export class CreateItineraryUseCase {
       destinationAirportId: command.destinationAirportId,
       departureDate: new Date(command.departureDate),
       durationDays: command.durationDays,
+      details: command.details,
     });
 
     // 2. Validate that both airports exist via the Airport Service

@@ -12,6 +12,9 @@ export class InvalidItineraryNameError extends ItineraryDomainError {
   }
 }
 
+/** A rule about passengers, lodging, budget, guides, safety info, etc. was violated. */
+export class InvalidItineraryDetailsError extends ItineraryDomainError {}
+
 export class SameOriginAndDestinationError extends ItineraryDomainError {
   constructor() {
     super('Origin airport and destination airport must be different');

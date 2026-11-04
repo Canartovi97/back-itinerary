@@ -29,6 +29,7 @@ import { GetItineraryUseCase } from '../../application/get-itinerary.use-case';
 import { ListItinerariesUseCase } from '../../application/list-itineraries.use-case';
 import { UpdateItineraryUseCase } from '../../application/update-itinerary.use-case';
 import { CreateItineraryDto } from '../dto/create-itinerary.dto';
+import { toDetailsInput } from '../dto/itinerary-details.dto';
 import { ItineraryDto } from '../dto/itinerary.dto';
 import { UpdateItineraryDto } from '../dto/update-itinerary.dto';
 import { AuthTokenPayload } from '../../domain/ports/token-issuer.port';
@@ -60,7 +61,7 @@ export class ItineraryController {
   @ApiOkResponse({ type: ItineraryDto })
   @ApiBadRequestResponse({
     description:
-      'A domain rule was violated (blank or too long name, same origin/destination, past departure date, non-positive duration) or a field failed validation.',
+      'A domain rule was violated (blank or too long name, invalid trip details such as travelers, guides without contact or duplicated attractions, same origin/destination, past departure date, non-positive duration) or a field failed validation.',
   })
   @ApiNotFoundResponse({ description: 'The origin or destination airport id does not exist.' })
   @ApiServiceUnavailableResponse({
@@ -70,7 +71,15 @@ export class ItineraryController {
     @Body() dto: CreateItineraryDto,
     @CurrentUser() user: AuthTokenPayload,
   ): Promise<ItineraryDto> {
-    const itinerary = await this.createItineraryUseCase.execute({ ...dto, userId: user.sub });
+    const itinerary = await this.createItineraryUseCase.execute({
+      name: dto.name,
+      userId: user.sub,
+      originAirportId: dto.originAirportId,
+      destinationAirportId: dto.destinationAirportId,
+      departureDate: dto.departureDate,
+      durationDays: dto.durationDays,
+      details: toDetailsInput(dto),
+    });
     return ItineraryDto.fromDomain(itinerary);
   }
 
@@ -103,7 +112,7 @@ export class ItineraryController {
   @ApiOkResponse({ type: ItineraryDto })
   @ApiBadRequestResponse({
     description:
-      'A domain rule was violated (blank or too long name, same origin/destination, past departure date, non-positive duration) or a field failed validation.',
+      'A domain rule was violated (blank or too long name, invalid trip details such as travelers, guides without contact or duplicated attractions, same origin/destination, past departure date, non-positive duration) or a field failed validation.',
   })
   @ApiNotFoundResponse({
     description:
@@ -117,7 +126,14 @@ export class ItineraryController {
     @Body() dto: UpdateItineraryDto,
     @CurrentUser() user: AuthTokenPayload,
   ): Promise<ItineraryDto> {
-    const itinerary = await this.updateItineraryUseCase.execute(id, user.sub, dto);
+    const itinerary = await this.updateItineraryUseCase.execute(id, user.sub, {
+      name: dto.name,
+      originAirportId: dto.originAirportId,
+      destinationAirportId: dto.destinationAirportId,
+      departureDate: dto.departureDate,
+      durationDays: dto.durationDays,
+      details: toDetailsInput(dto),
+    });
     return ItineraryDto.fromDomain(itinerary);
   }
 

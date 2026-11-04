@@ -3,6 +3,7 @@ import {
   AirportNotFoundError,
   ItineraryNotFoundError,
 } from '../domain/errors/itinerary-domain.errors';
+import { ItineraryDetails } from '../domain/itinerary-details';
 import { Itinerary } from '../domain/itinerary.entity';
 import {
   AIRPORT_VALIDATION_PORT,
@@ -19,6 +20,7 @@ export interface UpdateItineraryCommand {
   destinationAirportId?: number;
   departureDate?: string;
   durationDays?: number;
+  details?: Partial<ItineraryDetails>;
 }
 
 @Injectable()
@@ -40,6 +42,7 @@ export class UpdateItineraryUseCase {
       destinationAirportId: command.destinationAirportId,
       departureDate: command.departureDate ? new Date(command.departureDate) : undefined,
       durationDays: command.durationDays,
+      details: command.details,
     });
 
     // Same rule as creation (PROYEC-14): an airport that changed must exist

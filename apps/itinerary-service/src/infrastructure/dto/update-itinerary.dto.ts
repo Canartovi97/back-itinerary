@@ -11,7 +11,10 @@ import {
   Min,
 } from 'class-validator';
 
-export class UpdateItineraryDto {
+import { ItineraryDetailsInputDto } from './itinerary-details.dto';
+
+/** Every field optional; a details section that is sent replaces the stored one. */
+export class UpdateItineraryDto extends ItineraryDetailsInputDto {
   @ApiPropertyOptional({ example: 'Vacaciones en Cartagena', maxLength: 100 })
   @IsOptional()
   @IsString()
