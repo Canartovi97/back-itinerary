@@ -14,6 +14,8 @@ export class TypeOrmItineraryRepository implements ItineraryRepository {
 
   async save(itinerary: Itinerary): Promise<Itinerary> {
     const entity = this.repo.create({
+      name: itinerary.name,
+      userId: itinerary.userId,
       originAirportId: itinerary.originAirportId,
       destinationAirportId: itinerary.destinationAirportId,
       departureDate: itinerary.departureDate,
@@ -28,13 +30,17 @@ export class TypeOrmItineraryRepository implements ItineraryRepository {
     return entity ? this.toDomain(entity) : null;
   }
 
-  async findAll(): Promise<Itinerary[]> {
-    const entities = await this.repo.find();
+  async findAllByUser(userId: string): Promise<Itinerary[]> {
+    const entities = await this.repo.find({
+      where: { userId },
+      order: { departureDate: 'ASC' },
+    });
     return entities.map((e) => this.toDomain(e));
   }
 
   async update(itinerary: Itinerary): Promise<Itinerary> {
     await this.repo.update(itinerary.id as string, {
+      name: itinerary.name,
       originAirportId: itinerary.originAirportId,
       destinationAirportId: itinerary.destinationAirportId,
       departureDate: itinerary.departureDate,
@@ -52,6 +58,10 @@ export class TypeOrmItineraryRepository implements ItineraryRepository {
     return Itinerary.create(
       {
         id: entity.id,
+        name: entity.name,
+        // Legacy rows without an owner map to an id no user has, so they
+        // are never returned by the ownership-checked use cases.
+        userId: entity.userId ?? '',
         originAirportId: entity.originAirportId,
         destinationAirportId: entity.destinationAirportId,
         departureDate: entity.departureDate,

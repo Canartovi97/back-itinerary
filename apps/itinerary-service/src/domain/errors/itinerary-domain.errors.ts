@@ -6,6 +6,12 @@ export class ItineraryDomainError extends Error {
   }
 }
 
+export class InvalidItineraryNameError extends ItineraryDomainError {
+  constructor() {
+    super('Itinerary name is required and must be at most 100 characters');
+  }
+}
+
 export class SameOriginAndDestinationError extends ItineraryDomainError {
   constructor() {
     super('Origin airport and destination airport must be different');

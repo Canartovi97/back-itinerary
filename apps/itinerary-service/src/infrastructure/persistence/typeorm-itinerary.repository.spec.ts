@@ -14,6 +14,8 @@ import { TypeOrmItineraryRepository } from './typeorm-itinerary.repository';
 describe('TypeOrmItineraryRepository (SCRUM-29)', () => {
   const sampleEntity: ItineraryOrmEntity = {
     id: 'itin-1',
+    name: 'Trip',
+    userId: 'user-1',
     originAirportId: 1,
     destinationAirportId: 2,
     departureDate: new Date('2030-01-01T00:00:00.000Z'),
@@ -34,6 +36,8 @@ describe('TypeOrmItineraryRepository (SCRUM-29)', () => {
 
     const itinerary = Itinerary.create(
       {
+        name: 'Trip',
+        userId: 'user-1',
         originAirportId: 1,
         destinationAirportId: 2,
         departureDate: new Date('2030-01-01T00:00:00.000Z'),
@@ -60,13 +64,13 @@ describe('TypeOrmItineraryRepository (SCRUM-29)', () => {
     await expect(repo.findById('missing')).resolves.toBeNull();
   });
 
-  it('maps every row from findAll onto domain Itinerary instances', async () => {
+  it('maps every row from findAllByUser onto domain Itinerary instances', async () => {
     const ormRepo: Partial<Repository<ItineraryOrmEntity>> = {
       find: jest.fn().mockResolvedValue([sampleEntity]),
     };
     const repo = buildRepository(ormRepo);
 
-    const result = await repo.findAll();
+    const result = await repo.findAllByUser('user-1');
 
     expect(result).toHaveLength(1);
     expect(result[0]).toBeInstanceOf(Itinerary);

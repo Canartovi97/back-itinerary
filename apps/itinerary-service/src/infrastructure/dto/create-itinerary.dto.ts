@@ -1,8 +1,22 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsDateString, IsInt, IsPositive, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsInt,
+  IsNotEmpty,
+  IsPositive,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class CreateItineraryDto {
+  @ApiProperty({ example: 'Vacaciones en Cartagena', maxLength: 100 })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  name: string;
+
   @ApiProperty({ example: 3, description: "The origin airport's id (from Airport Service)" })
   @Type(() => Number)
   @IsInt()

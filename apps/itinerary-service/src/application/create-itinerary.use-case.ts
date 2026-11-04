@@ -12,6 +12,9 @@ import {
 } from '../domain/ports/itinerary-repository.port';
 
 export interface CreateItineraryCommand {
+  name: string;
+  /** The authenticated user creating the itinerary (from the JWT, never the request body). */
+  userId: string;
   originAirportId: number;
   destinationAirportId: number;
   departureDate: string;
@@ -29,6 +32,8 @@ export class CreateItineraryUseCase {
   async execute(command: CreateItineraryCommand): Promise<Itinerary> {
     // 1. Validate domain invariants (throws domain errors on violation)
     const itinerary = Itinerary.create({
+      name: command.name,
+      userId: command.userId,
       originAirportId: command.originAirportId,
       destinationAirportId: command.destinationAirportId,
       departureDate: new Date(command.departureDate),

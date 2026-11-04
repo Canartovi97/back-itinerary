@@ -15,6 +15,8 @@ import { CreateItineraryUseCase } from './create-itinerary.use-case';
  */
 describe('CreateItineraryUseCase event publication (SCRUM-31)', () => {
   const validCommand = {
+    name: 'Trip to the coast',
+    userId: 'user-1',
     originAirportId: 1,
     destinationAirportId: 2,
     departureDate: new Date(Date.now() + 86_400_000).toISOString(),
@@ -32,7 +34,7 @@ describe('CreateItineraryUseCase event publication (SCRUM-31)', () => {
       save:
         options.saveImpl ?? (async (i) => Itinerary.create({ ...i, id: 'itin-1' }, new Date(0))),
       findById: async () => null,
-      findAll: async () => [],
+      findAllByUser: async () => [],
       update: async (i) => i,
       delete: async () => undefined,
     };

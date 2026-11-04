@@ -5,6 +5,15 @@ export class ItineraryDto {
   @ApiProperty({ example: 'b3f1c2a0-5e4d-4b8a-9c1e-2f3a4b5c6d7e' })
   id: string;
 
+  @ApiProperty({ example: 'Vacaciones en Cartagena' })
+  name: string;
+
+  @ApiProperty({
+    example: '7c9e6679-7425-40de-944b-e07fc1f90ae7',
+    description: 'The owner: id of the user that created the itinerary',
+  })
+  userId: string;
+
   @ApiProperty({ example: 3 })
   originAirportId: number;
 
@@ -23,6 +32,8 @@ export class ItineraryDto {
   static fromDomain(itinerary: Itinerary): ItineraryDto {
     const dto = new ItineraryDto();
     dto.id = itinerary.id ?? '';
+    dto.name = itinerary.name;
+    dto.userId = itinerary.userId;
     dto.originAirportId = itinerary.originAirportId;
     dto.destinationAirportId = itinerary.destinationAirportId;
     dto.departureDate = itinerary.departureDate.toISOString();
