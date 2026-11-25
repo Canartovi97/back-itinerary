@@ -6,6 +6,8 @@ import { firstValueFrom } from 'rxjs';
 import { Airport } from '../../domain/airport.entity';
 import { AirportProviderUnavailableError } from '../../domain/errors/airport-provider-unavailable.error';
 import { AirportProvider } from '../../domain/ports/airport-provider.port';
+import { TouristAttractionProvider } from '../../domain/ports/tourist-attraction-provider.port';
+import { TouristAttraction } from '../../domain/tourist-attraction.entity';
 import { CircuitBreaker, CircuitOpenError } from '../resilience/circuit-breaker';
 
 interface ApiColombiaAirportDto {
@@ -15,6 +17,19 @@ interface ApiColombiaAirportDto {
   iataCode?: string;
   latitude?: number;
   longitude?: number;
+  // api-colombia spells this field "deparmentId" (sic); both are accepted.
+  deparmentId?: number;
+  departmentId?: number;
+}
+
+interface ApiColombiaAttractionDto {
+  id: number;
+  name: string;
+  description?: string;
+  images?: string[];
+  latitude?: string | number;
+  longitude?: string | number;
+  city?: { name?: string };
 }
 
 const DEFAULT_TIMEOUT_MS = 5000;
@@ -27,10 +42,11 @@ const DEFAULT_RESET_TIMEOUT_MS = 30_000;
  * Adapter implementing AirportProvider by calling the public api-colombia service.
  * Combines a request timeout, a manual retry loop, and a circuit breaker so a
  * degraded upstream fails fast instead of piling up slow/hanging requests.
- * Endpoints consumed: GET {baseUrl}/Airport and GET {baseUrl}/Airport/{id}.
+ * Endpoints consumed: GET {baseUrl}/Airport, GET {baseUrl}/Airport/{id} and
+ * GET {baseUrl}/Department/{id}/touristicattractions.
  */
 @Injectable()
-export class ApiColombiaAirportAdapter implements AirportProvider {
+export class ApiColombiaAirportAdapter implements AirportProvider, TouristAttractionProvider {
   private readonly logger = new Logger(ApiColombiaAirportAdapter.name);
   private readonly baseUrl: string;
   private readonly circuitBreaker: CircuitBreaker;
@@ -63,6 +79,51 @@ export class ApiColombiaAirportAdapter implements AirportProvider {
   async findById(id: number): Promise<Airport | null> {
     const result = await this.guarded<ApiColombiaAirportDto>(`${this.baseUrl}/Airport/${id}`);
     return result.notFound ? null : this.toDomain(result.data);
+  }
+
+  /**
+   * api-colombia has no attractions-by-city endpoint, so this resolves the
+   * airport's department and lists that department's attractions
+   * (GET /Department/{id}/touristicattractions).
+   */
+  async findByAirport(airportId: number): Promise<TouristAttraction[] | null> {
+    const airport = await this.guarded<ApiColombiaAirportDto>(
+      `${this.baseUrl}/Airport/${airportId}`,
+    );
+    if (airport.notFound) {
+      return null;
+    }
+    const departmentId = airport.data.deparmentId ?? airport.data.departmentId;
+    if (!departmentId) {
+      return [];
+    }
+
+    const result = await this.guarded<ApiColombiaAttractionDto[] | ''>(
+      `${this.baseUrl}/Department/${departmentId}/touristicattractions`,
+    );
+    // Departments without attractions answer 404 or an empty body.
+    if (result.notFound || !Array.isArray(result.data)) {
+      return [];
+    }
+    return result.data
+      .filter((dto) => dto.name?.trim())
+      .map(
+        (dto) =>
+          new TouristAttraction(
+            dto.id,
+            dto.name.trim(),
+            dto.description ?? '',
+            dto.city?.name ?? '',
+            dto.images?.[0] ?? null,
+            this.toNumberOrNull(dto.latitude),
+            this.toNumberOrNull(dto.longitude),
+          ),
+      );
+  }
+
+  private toNumberOrNull(value: string | number | undefined): number | null {
+    const parsed = Number(value);
+    return value === undefined || value === '' || Number.isNaN(parsed) ? null : parsed;
   }
 
   /**

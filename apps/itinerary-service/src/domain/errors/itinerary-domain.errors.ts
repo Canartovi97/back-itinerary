@@ -6,6 +6,15 @@ export class ItineraryDomainError extends Error {
   }
 }
 
+export class InvalidItineraryNameError extends ItineraryDomainError {
+  constructor() {
+    super('Itinerary name is required and must be at most 100 characters');
+  }
+}
+
+/** A rule about passengers, lodging, budget, guides, safety info, etc. was violated. */
+export class InvalidItineraryDetailsError extends ItineraryDomainError {}
+
 export class SameOriginAndDestinationError extends ItineraryDomainError {
   constructor() {
     super('Origin airport and destination airport must be different');
@@ -27,6 +36,17 @@ export class InvalidDurationError extends ItineraryDomainError {
 export class AirportNotFoundError extends ItineraryDomainError {
   constructor(airportId: number) {
     super(`Airport with id ${airportId} does not exist`);
+  }
+}
+
+/**
+ * Raised when Airport Service cannot be reached (network failure, timeout,
+ * or an error response other than 404), so airport existence can't be
+ * confirmed. The itinerary must not be saved in that case.
+ */
+export class AirportServiceUnavailableError extends ItineraryDomainError {
+  constructor() {
+    super('Airport Service is unavailable, airport existence could not be validated');
   }
 }
 

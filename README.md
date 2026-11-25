@@ -82,7 +82,7 @@ implemented by adapters in `infrastructure/adapters` and wired together in each 
 4. Swagger docs:
    - Airport Service: http://localhost:3001/api/docs
    - Itinerary Service: http://localhost:3000/api/docs
-   - Notification Function health check: http://localhost:3002/health
+   - Notification Function: http://localhost:3002/api/docs (health check at http://localhost:3002/health)
 
 ## Running with Docker Compose
 
@@ -118,8 +118,9 @@ npm run migration:run
 npm run migration:revert
 ```
 
-Two migrations exist: `CreateItinerariesTable` and `CreateUsersTable` (see
-"Authentication" below). Migration commands use `typeorm-ts-node-commonjs`
+Three migrations exist: `CreateItinerariesTable`, `CreateUsersTable` (see
+"Authentication" below) and `AddNameAndOwnerToItineraries` (itineraries
+created before it keep a placeholder name and no owner, so no user sees them). Migration commands use `typeorm-ts-node-commonjs`
 (TypeORM's own bin for exactly this decorator + ts-node + npm-workspaces
 combination) rather than reaching into `node_modules/typeorm/cli.js`
 directly, which breaks under workspace hoisting since apps here have no
@@ -194,7 +195,13 @@ only service that issues tokens:
 - `POST /auth/login` — `{ email, password }` → `{ accessToken }`, a JWT signed
   with `JWT_SECRET` (`sub` = user id, `email`), `401` on wrong credentials.
 - All `/itineraries` endpoints require `Authorization: Bearer <token>`
-  (`JwtAuthGuard`), returning `401` if it's missing/invalid/expired. Airport
+  (`JwtAuthGuard`), returning `401` if it's missing/invalid/expired.
+  Every itinerary has an owner (`userId`, the token's `sub`) and a `name`;
+  users only list, read, update and delete their own itineraries — another
+  user's itinerary answers `404`, exactly like a missing one.
+- If Airport Service can't be reached while validating airports (create, or
+  update with a changed airport), the itinerary is not saved and the API
+  answers `503` (`AirportServiceUnavailableError`). Airport
   Service's read endpoints stay publicly browsable (RF-01/RF-02) — no ticket
   calls for authentication there.
 - The token is propagated on itinerary-service's internal call to
@@ -215,7 +222,6 @@ the stored JWT to every request — see that repo's README.
 ## Known gaps / TODOs
 
 - No integration or e2e tests yet (only pure unit tests at the domain/use-case level).
-- No authentication/authorization on any endpoint.
 - Notification Function's SQLite storage is for local dev only; a real Lambda
   deployment would swap `NotificationRepositoryPort` for a DynamoDB adapter.
 - `itinerary-service` does not auto-run migrations on startup; this is intentional

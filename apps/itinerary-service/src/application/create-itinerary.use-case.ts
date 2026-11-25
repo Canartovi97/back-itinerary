@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { AirportNotFoundError } from '../domain/errors/itinerary-domain.errors';
+import { ItineraryDetails } from '../domain/itinerary-details';
 import { Itinerary } from '../domain/itinerary.entity';
 import {
   AIRPORT_VALIDATION_PORT,
@@ -12,10 +13,14 @@ import {
 } from '../domain/ports/itinerary-repository.port';
 
 export interface CreateItineraryCommand {
+  name: string;
+  /** The authenticated user creating the itinerary (from the JWT, never the request body). */
+  userId: string;
   originAirportId: number;
   destinationAirportId: number;
   departureDate: string;
   durationDays: number;
+  details?: Partial<ItineraryDetails>;
 }
 
 @Injectable()
@@ -29,10 +34,13 @@ export class CreateItineraryUseCase {
   async execute(command: CreateItineraryCommand): Promise<Itinerary> {
     // 1. Validate domain invariants (throws domain errors on violation)
     const itinerary = Itinerary.create({
+      name: command.name,
+      userId: command.userId,
       originAirportId: command.originAirportId,
       destinationAirportId: command.destinationAirportId,
       departureDate: new Date(command.departureDate),
       durationDays: command.durationDays,
+      details: command.details,
     });
 
     // 2. Validate that both airports exist via the Airport Service

@@ -1,8 +1,27 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsDateString, IsInt, IsOptional, IsPositive, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsPositive,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
-export class UpdateItineraryDto {
+import { ItineraryDetailsInputDto } from './itinerary-details.dto';
+
+/** Every field optional; a details section that is sent replaces the stored one. */
+export class UpdateItineraryDto extends ItineraryDetailsInputDto {
+  @ApiPropertyOptional({ example: 'Vacaciones en Cartagena', maxLength: 100 })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  name?: string;
+
   @ApiPropertyOptional({
     example: 3,
     description: "The origin airport's id (from Airport Service)",

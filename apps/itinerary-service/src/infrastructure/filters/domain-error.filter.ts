@@ -2,6 +2,7 @@ import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus } from '@nestjs/commo
 import { Response } from 'express';
 import {
   AirportNotFoundError,
+  AirportServiceUnavailableError,
   ItineraryDomainError,
   ItineraryNotFoundError,
 } from '../../domain/errors/itinerary-domain.errors';
@@ -18,6 +19,8 @@ export class DomainErrorFilter implements ExceptionFilter {
     let status: number = HttpStatus.BAD_REQUEST;
     if (exception instanceof ItineraryNotFoundError || exception instanceof AirportNotFoundError) {
       status = HttpStatus.NOT_FOUND;
+    } else if (exception instanceof AirportServiceUnavailableError) {
+      status = HttpStatus.SERVICE_UNAVAILABLE;
     }
 
     response.status(status).json({

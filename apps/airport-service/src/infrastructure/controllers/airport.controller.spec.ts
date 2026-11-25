@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { GetAirportByIdUseCase } from '../../application/get-airport-by-id.use-case';
+import { ListAirportAttractionsUseCase } from '../../application/list-airport-attractions.use-case';
 import { ListAirportsUseCase } from '../../application/list-airports.use-case';
 import { Airport } from '../../domain/airport.entity';
 import { AirportProviderUnavailableError } from '../../domain/errors/airport-provider-unavailable.error';
@@ -33,6 +34,7 @@ describe('AirportController (SCRUM-13/16)', () => {
       providers: [
         { provide: ListAirportsUseCase, useValue: listAirportsUseCase },
         { provide: GetAirportByIdUseCase, useValue: getAirportByIdUseCase },
+        { provide: ListAirportAttractionsUseCase, useValue: { execute: jest.fn() } },
       ],
     }).compile();
 
