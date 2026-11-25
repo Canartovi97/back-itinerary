@@ -96,9 +96,17 @@ This starts Postgres, RabbitMQ (with the management UI at http://localhost:15672
 guest/guest), and all three services on a shared `itinerary-net` bridge network.
 `itinerary-service` waits for Postgres and RabbitMQ health checks before starting.
 
-Note: `itinerary-service` does not run migrations automatically on boot (by design,
-since `synchronize` is disabled). Run migrations manually (see below) against the
-Dockerized Postgres, or exec into the container and run `npm run migration:run`.
+The `itinerary-service` container applies pending TypeORM migrations
+(`npm run migration:run:prod`) before starting the API, so an empty database is ready on
+the first run. Running the service outside Docker (`npm run start:itinerary`) still
+needs `npm run migration:run` (see below).
+
+## CI/CD and SonarQube
+
+GitHub Actions runs build, unit tests with coverage, SonarQube and Docker builds on
+every PR (`ci.yml`), and publishes + deploys the images on every merge into `main`
+(`cd.yml`). A local SonarQube server is in `docker-compose.sonar.yml`. Details, secrets
+and the latest quality results: [docs/ci-cd.md](docs/ci-cd.md).
 
 ## Database migrations (itinerary-service)
 

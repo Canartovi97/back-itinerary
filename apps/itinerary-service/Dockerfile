@@ -24,4 +24,5 @@ COPY --from=build /usr/src/app/apps/itinerary-service/dist ./dist
 COPY --from=build /usr/src/app/node_modules ./node_modules
 
 EXPOSE 3000
-CMD ["node", "dist/main.js"]
+# Apply pending migrations, then start the API (so a fresh database is ready on first deploy).
+CMD ["sh", "-c", "npm run migration:run:prod && node dist/main.js"]

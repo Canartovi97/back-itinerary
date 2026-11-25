@@ -8,9 +8,15 @@ import { UserOrmEntity } from './user.orm-entity';
  * running migrations. Not used by the running NestJS application directly
  * (see app.module.ts for the runtime TypeOrmModule configuration).
  */
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  // No fallback: credentials come only from the environment (.env / docker-compose).
+  throw new Error('DATABASE_URL is not set. Copy .env.example to .env and fill it in.');
+}
+
 const AppDataSource = new DataSource({
   type: 'postgres',
-  url: process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5432/itinerary_db',
+  url: databaseUrl,
   entities: [ItineraryOrmEntity, UserOrmEntity],
   migrations: [__dirname + '/migrations/*.{ts,js}'],
   synchronize: false,

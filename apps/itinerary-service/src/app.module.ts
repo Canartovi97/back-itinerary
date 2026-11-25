@@ -37,10 +37,8 @@ import { UserOrmEntity } from './infrastructure/persistence/user.orm-entity';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
-        url: configService.get<string>(
-          'DATABASE_URL',
-          'postgres://postgres:postgres@localhost:5432/itinerary_db',
-        ),
+        // No fallback: credentials come only from the environment (.env / docker-compose).
+        url: configService.getOrThrow<string>('DATABASE_URL'),
         entities: [ItineraryOrmEntity, UserOrmEntity],
         synchronize: false,
         migrationsRun: false,

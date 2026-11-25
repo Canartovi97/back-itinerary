@@ -1,0 +1,21 @@
+# Local SonarQube server for the code-quality analysis of back and front.
+#   docker compose -f docker-compose.sonar.yml up -d
+#   open http://localhost:9000  (first login admin / admin, then change it)
+# Kept apart from docker-compose.yml so the app can run without it.
+services:
+  sonarqube:
+    image: sonarqube:25.1.0.102122-community
+    container_name: sonarqube
+    ports:
+      - '9000:9000'
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: 'true'
+    volumes:
+      - sonarqube-data:/opt/sonarqube/data
+      - sonarqube-extensions:/opt/sonarqube/extensions
+      - sonarqube-logs:/opt/sonarqube/logs
+
+volumes:
+  sonarqube-data:
+  sonarqube-extensions:
+  sonarqube-logs:

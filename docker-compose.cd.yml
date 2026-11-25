@@ -1,0 +1,10 @@
+# Override used by continuous deployment: run the images published to GHCR
+# instead of building them from source.
+#   IMAGE_TAG=<git sha> docker compose -f docker-compose.yml -f docker-compose.cd.yml up -d --no-build
+services:
+  airport-service:
+    image: ghcr.io/canartovi97/airport-service:${IMAGE_TAG:-latest}
+  itinerary-service:
+    image: ghcr.io/canartovi97/itinerary-service:${IMAGE_TAG:-latest}
+  notification-function:
+    image: ghcr.io/canartovi97/notification-function:${IMAGE_TAG:-latest}

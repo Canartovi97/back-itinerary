@@ -1,0 +1,96 @@
+# Continuous integration: every push to the long-lived branches and every PR
+# into them builds the three services, runs the unit tests with coverage,
+# sends the analysis to SonarQube and checks the Docker images still build.
+name: CI
+
+on:
+  push:
+    branches: [main, release, dev]
+  pull_request:
+    branches: [main, release, dev]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build & unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the three services
+        run: npm run build
+
+      - name: Unit tests with coverage
+        run: npm run test:cov
+
+      - name: Keep the coverage reports for SonarQube
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: apps/*/coverage/lcov.info
+          retention-days: 7
+
+  sonarqube:
+    name: SonarQube analysis
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    # Runs only once the SonarQube server is configured as repository secrets
+    # (SONAR_TOKEN and SONAR_HOST_URL), so forks and first runs don't fail.
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+    steps:
+      - name: Skip when SonarQube is not configured
+        if: env.SONAR_TOKEN == '' || env.SONAR_HOST_URL == ''
+        run: echo "::notice::SONAR_TOKEN / SONAR_HOST_URL secrets not set - SonarQube analysis skipped."
+
+      - uses: actions/checkout@v4
+        if: env.SONAR_TOKEN != '' && env.SONAR_HOST_URL != ''
+        with:
+          fetch-depth: 0 # full history, so Sonar can attribute new code
+
+      - uses: actions/download-artifact@v4
+        if: env.SONAR_TOKEN != '' && env.SONAR_HOST_URL != ''
+        with:
+          name: coverage
+          path: apps
+
+      - name: SonarQube scan
+        if: env.SONAR_TOKEN != '' && env.SONAR_HOST_URL != ''
+        uses: SonarSource/sonarqube-scan-action@v5
+
+      - name: Quality gate
+        if: env.SONAR_TOKEN != '' && env.SONAR_HOST_URL != ''
+        uses: SonarSource/sonarqube-quality-gate-action@v1
+        timeout-minutes: 5
+
+  docker-build:
+    name: Docker images build
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [airport-service, itinerary-service, notification-function]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build ${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/${{ matrix.service }}/Dockerfile
+          push: false
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
