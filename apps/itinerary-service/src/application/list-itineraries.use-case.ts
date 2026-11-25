@@ -5,11 +5,15 @@ import {
   ItineraryRepository,
 } from '../domain/ports/itinerary-repository.port';
 
+/**
+ * Lists the itineraries owned by the given user — itineraries are personal
+ * data, so one user never sees another user's trips.
+ */
 @Injectable()
 export class ListItinerariesUseCase {
   constructor(@Inject(ITINERARY_REPOSITORY) private readonly repository: ItineraryRepository) {}
 
-  async execute(): Promise<Itinerary[]> {
-    return this.repository.findAll();
+  async execute(userId: string): Promise<Itinerary[]> {
+    return this.repository.findAllByUser(userId);
   }
 }

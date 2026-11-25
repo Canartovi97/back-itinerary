@@ -9,9 +9,9 @@ import {
 export class DeleteItineraryUseCase {
   constructor(@Inject(ITINERARY_REPOSITORY) private readonly repository: ItineraryRepository) {}
 
-  async execute(id: string): Promise<void> {
+  async execute(id: string, userId: string): Promise<void> {
     const existing = await this.repository.findById(id);
-    if (!existing) {
+    if (!existing || !existing.isOwnedBy(userId)) {
       throw new ItineraryNotFoundError(id);
     }
     await this.repository.delete(id);

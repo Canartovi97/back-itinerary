@@ -10,9 +10,13 @@ import {
 export class GetItineraryUseCase {
   constructor(@Inject(ITINERARY_REPOSITORY) private readonly repository: ItineraryRepository) {}
 
-  async execute(id: string): Promise<Itinerary> {
+  /**
+   * Another user's itinerary is reported as not found rather than forbidden,
+   * so the API never reveals which itinerary ids exist.
+   */
+  async execute(id: string, userId: string): Promise<Itinerary> {
     const itinerary = await this.repository.findById(id);
-    if (!itinerary) {
+    if (!itinerary || !itinerary.isOwnedBy(userId)) {
       throw new ItineraryNotFoundError(id);
     }
     return itinerary;

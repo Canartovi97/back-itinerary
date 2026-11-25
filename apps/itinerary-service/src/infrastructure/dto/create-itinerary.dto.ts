@@ -1,20 +1,52 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsInt, IsPositive, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsDateString,
+  IsInt,
+  IsNotEmpty,
+  IsPositive,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
-export class CreateItineraryDto {
-  @ApiProperty()
+import { ItineraryDetailsInputDto } from './itinerary-details.dto';
+
+/** Core trip fields plus the optional trip-details sections (defaults apply). */
+export class CreateItineraryDto extends ItineraryDetailsInputDto {
+  @ApiProperty({ example: 'Vacaciones en Cartagena', maxLength: 100 })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  name: string;
+
+  @ApiProperty({ example: 3, description: "The origin airport's id (from Airport Service)" })
+  @Type(() => Number)
   @IsInt()
   originAirportId: number;
 
-  @ApiProperty()
+  @ApiProperty({
+    example: 25,
+    description:
+      "The destination airport's id (from Airport Service), must differ from originAirportId",
+  })
+  @Type(() => Number)
   @IsInt()
   destinationAirportId: number;
 
-  @ApiProperty({ description: 'ISO 8601 date string, must not be in the past' })
+  @ApiProperty({
+    example: '2030-06-15',
+    description: 'ISO 8601 date string, must not be in the past',
+  })
   @IsDateString()
   departureDate: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    example: 5,
+    minimum: 1,
+    description: 'Trip length in days, must be greater than zero',
+  })
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @IsPositive()
