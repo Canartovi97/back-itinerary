@@ -3,6 +3,7 @@ import { CreateNotificationFromEventUseCase } from './application/create-notific
 import { RabbitMqItineraryCreatedConsumer } from './infrastructure/adapters/rabbitmq-itinerary-created.consumer';
 import { SqliteNotificationRepository } from './infrastructure/adapters/sqlite-notification.repository';
 import { createHealthServer } from './infrastructure/controllers/health.controller';
+import { mountApiDocs } from './infrastructure/docs/openapi';
 import { StructuredLogger } from './infrastructure/logging/structured-logger';
 
 /**
@@ -55,8 +56,9 @@ async function bootstrap() {
   }
 
   const app = createHealthServer();
+  mountApiDocs(app);
   app.listen(port, () => {
-    StructuredLogger.log(`Notification Function health endpoint listening on port ${port}`);
+    StructuredLogger.log(`Notification Function listening on port ${port} (docs at /api/docs)`);
   });
 }
 

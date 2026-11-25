@@ -82,7 +82,7 @@ implemented by adapters in `infrastructure/adapters` and wired together in each 
 4. Swagger docs:
    - Airport Service: http://localhost:3001/api/docs
    - Itinerary Service: http://localhost:3000/api/docs
-   - Notification Function health check: http://localhost:3002/health
+   - Notification Function: http://localhost:3002/api/docs (health check at http://localhost:3002/health)
 
 ## Running with Docker Compose
 
